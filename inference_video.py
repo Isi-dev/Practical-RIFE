@@ -59,10 +59,6 @@ import shutil
 import subprocess
 import moviepy.editor
 
-# Suppress ALSA errors
-os.environ["XDG_RUNTIME_DIR"] = "/tmp"
-os.environ["SDL_AUDIODRIVER"] = "dummy"
-
 def has_audio(video_path):
     """Check if the video file has an audio stream."""
     cmd = f'ffprobe -i "{video_path}" -show_streams -select_streams a -loglevel error'
