@@ -7,8 +7,8 @@ from tqdm import tqdm
 from torch.nn import functional as F
 import warnings
 import _thread
-# import skvideo.io
-import imageio
+import skvideo.io
+# import imageio
 from queue import Queue, Empty
 from model.pytorch_msssim import ssim_matlab
 
@@ -165,10 +165,10 @@ if not args.video is None:
         args.fps = fps * args.multi
     else:
         fpsNotAssigned = False
-    # videogen = skvideo.io.vreader(args.video)
-    videogen = imageio.get_reader(args.video)
-    # lastframe = next(videogen)
-    lastframe = next(iter(videogen))
+    videogen = skvideo.io.vreader(args.video)
+    # videogen = imageio.get_reader(args.video)
+    lastframe = next(videogen)
+    # lastframe = next(iter(videogen))
     fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
     video_path_wo_ext, ext = os.path.splitext(args.video)
     print('{}.{}, {} frames in total, {}FPS to {}FPS'.format(video_path_wo_ext, args.ext, tot_frame, fps, args.fps))
