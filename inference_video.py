@@ -14,45 +14,96 @@ from model.pytorch_msssim import ssim_matlab
 
 warnings.filterwarnings("ignore")
 
+# def transferAudio(sourceVideo, targetVideo):
+#     import shutil
+#     import moviepy.editor
+#     tempAudioFileName = "./temp/audio.mkv"
+
+#     # split audio from original video file and store in "temp" directory
+#     if True:
+
+#         # clear old "temp" directory if it exits
+#         if os.path.isdir("temp"):
+#             # remove temp directory
+#             shutil.rmtree("temp")
+#         # create new "temp" directory
+#         os.makedirs("temp")
+#         # extract audio from video
+#         os.system('ffmpeg -y -i "{}" -c:a copy -vn {} > /dev/null 2>&1'.format(sourceVideo, tempAudioFileName))
+
+#     targetNoAudio = os.path.splitext(targetVideo)[0] + "_noaudio" + os.path.splitext(targetVideo)[1]
+#     os.rename(targetVideo, targetNoAudio)
+#     # combine audio file and new video file
+#     os.system('ffmpeg -y -i "{}" -i {} -c copy "{}" > /dev/null 2>&1'.format(targetNoAudio, tempAudioFileName, targetVideo))
+
+#     if os.path.getsize(targetVideo) == 0: # if ffmpeg failed to merge the video and audio together try converting the audio to aac
+#         tempAudioFileName = "./temp/audio.m4a"
+#         os.system('ffmpeg -y -i "{}" -c:a aac -b:a 160k -vn {} > /dev/null 2>&1'.format(sourceVideo, tempAudioFileName))
+#         os.system('ffmpeg -y -i "{}" -i {} -c copy "{}" > /dev/null 2>&1'.format(targetNoAudio, tempAudioFileName, targetVideo))
+#         if (os.path.getsize(targetVideo) == 0): # if aac is not supported by selected format
+#             os.rename(targetNoAudio, targetVideo)
+#             print("Audio transfer failed. Interpolated video will have no audio")
+#         else:
+#             print("Lossless audio transfer failed. Audio was transcoded to AAC (M4A) instead.")
+
+#             # remove audio-less video
+#             os.remove(targetNoAudio)
+#     else:
+#         os.remove(targetNoAudio)
+
+#     # remove temp directory
+#     shutil.rmtree("temp")
+
+import shutil
+import subprocess
+import moviepy.editor
+
+def has_audio(video_path):
+    """Check if the video file has an audio stream."""
+    cmd = f'ffprobe -i "{video_path}" -show_streams -select_streams a -loglevel error'
+    result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return bool(result.stdout)  # If output exists, audio is present
+
 def transferAudio(sourceVideo, targetVideo):
-    import shutil
-    import moviepy.editor
-    tempAudioFileName = "./temp/audio.mkv"
+    temp_dir = "./temp"
+    tempAudioFileName = os.path.join(temp_dir, "audio.mkv")
 
-    # split audio from original video file and store in "temp" directory
-    if True:
+    # Remove old temp directory and create a new one
+    if os.path.isdir(temp_dir):
+        shutil.rmtree(temp_dir)
+    os.makedirs(temp_dir)
 
-        # clear old "temp" directory if it exits
-        if os.path.isdir("temp"):
-            # remove temp directory
-            shutil.rmtree("temp")
-        # create new "temp" directory
-        os.makedirs("temp")
-        # extract audio from video
-        os.system('ffmpeg -y -i "{}" -c:a copy -vn {} > /dev/null 2>&1'.format(sourceVideo, tempAudioFileName))
+    if has_audio(sourceVideo):
+        # Extract audio only if present
+        os.system(f'ffmpeg -y -i "{sourceVideo}" -c:a copy -vn "{tempAudioFileName}" -loglevel error')
+    else:
+        print("Source video has no audio. Skipping audio transfer.")
+        return  # Exit function early
 
     targetNoAudio = os.path.splitext(targetVideo)[0] + "_noaudio" + os.path.splitext(targetVideo)[1]
     os.rename(targetVideo, targetNoAudio)
-    # combine audio file and new video file
-    os.system('ffmpeg -y -i "{}" -i {} -c copy "{}" > /dev/null 2>&1'.format(targetNoAudio, tempAudioFileName, targetVideo))
 
-    if os.path.getsize(targetVideo) == 0: # if ffmpeg failed to merge the video and audio together try converting the audio to aac
-        tempAudioFileName = "./temp/audio.m4a"
-        os.system('ffmpeg -y -i "{}" -c:a aac -b:a 160k -vn {} > /dev/null 2>&1'.format(sourceVideo, tempAudioFileName))
-        os.system('ffmpeg -y -i "{}" -i {} -c copy "{}" > /dev/null 2>&1'.format(targetNoAudio, tempAudioFileName, targetVideo))
-        if (os.path.getsize(targetVideo) == 0): # if aac is not supported by selected format
+    # Merge extracted audio with target video
+    os.system(f'ffmpeg -y -i "{targetNoAudio}" -i "{tempAudioFileName}" -c copy "{targetVideo}" -loglevel error')
+
+    # Handle potential failure due to unsupported audio format
+    if os.path.getsize(targetVideo) == 0:
+        tempAudioFileName = os.path.join(temp_dir, "audio.m4a")
+        os.system(f'ffmpeg -y -i "{sourceVideo}" -c:a aac -b:a 160k -vn "{tempAudioFileName}" -loglevel error')
+        os.system(f'ffmpeg -y -i "{targetNoAudio}" -i "{tempAudioFileName}" -c copy "{targetVideo}" -loglevel error')
+        
+        if os.path.getsize(targetVideo) == 0:
             os.rename(targetNoAudio, targetVideo)
-            print("Audio transfer failed. Interpolated video will have no audio")
+            print("Audio transfer failed. Target video will remain without audio.")
         else:
-            print("Lossless audio transfer failed. Audio was transcoded to AAC (M4A) instead.")
+            print("Lossless audio transfer failed. Audio was transcoded to AAC.")
 
-            # remove audio-less video
-            os.remove(targetNoAudio)
+        os.remove(targetNoAudio)
     else:
         os.remove(targetNoAudio)
 
-    # remove temp directory
-    shutil.rmtree("temp")
+    # Clean up temporary files
+    shutil.rmtree(temp_dir)
 
 parser = argparse.ArgumentParser(description='Interpolation for a pair of images')
 parser.add_argument('--video', dest='video', type=str, default=None)
