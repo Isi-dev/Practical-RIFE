@@ -52,8 +52,8 @@ if args.img[0].endswith('.exr') and args.img[1].endswith('.exr'):
 else:
     img0 = cv2.imread(args.img[0], cv2.IMREAD_UNCHANGED)
     img1 = cv2.imread(args.img[1], cv2.IMREAD_UNCHANGED)
-    img0 = cv2.resize(img0, (448, 256))
-    img1 = cv2.resize(img1, (448, 256))
+    # img0 = cv2.resize(img0, (448, 256))
+    # img1 = cv2.resize(img1, (448, 256))
     img0 = (torch.tensor(img0.transpose(2, 0, 1)).to(device) / 255.).unsqueeze(0)
     img1 = (torch.tensor(img1.transpose(2, 0, 1)).to(device) / 255.).unsqueeze(0)
 
